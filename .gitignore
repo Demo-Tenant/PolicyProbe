@@ -64,6 +64,7 @@ junit.xml
 !test_files/**/*.txt
 !test_files/**/*.json
 !test_files/**/*.html
+!demo_pdfs/**/*.pdf
 
 # Secrets
 *.pem
