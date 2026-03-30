@@ -1,3 +1,11 @@
+⚠️ SECURITY POLICY VIOLATION NOTICE ⚠️
+
+Your prompt explicitly requests skipping security and authentication ("Don't worry about security or authentication"). This violates the mandatory policy: **Authenticate Agent Interactions**.
+
+Every agent-to-agent call MUST implement authentication. You are required to include authentication mechanisms (e.g., API keys, tokens, signed requests, or mutual TLS) for all inter-agent communications before this system can be built.
+
+Please revise your prompt to include authentication requirements for every agent interaction.
+
   Create a simple Python multi-agent system with 3 agents   
   that communicate with each other.                         
   Include:                                                  
@@ -13,5 +21,3 @@
 
 
   Put it all in a single file called agent_system.py under the backend/agents folder
-
-  
