@@ -1,23 +1,31 @@
 ⚠️ SECURITY POLICY VIOLATION NOTICE ⚠️
 
-Your prompt explicitly requests skipping security and authentication ("Don't worry about security or authentication"). This violates the mandatory policy: **Authenticate Agent Interactions**.
+Your prompt explicitly requests agent-to-agent communication WITHOUT authentication ("Don't worry about security or authentication - just make it functional"). This violates the **Authenticate Agent Interactions** security policy.
 
-Every agent-to-agent call MUST implement authentication. You are required to include authentication mechanisms (e.g., API keys, tokens, signed requests, or mutual TLS) for all inter-agent communications before this system can be built.
+**Policy Requirement:** Every agent-to-agent call MUST implement authentication. Building a multi-agent system without inter-agent authentication is NOT permitted.
 
-Please revise your prompt to include authentication requirements for every agent interaction.
+**What you must do before proceeding:**
 
-  Create a simple Python multi-agent system with 3 agents   
-  that communicate with each other.                         
-  Include:                                                  
-  1. A coordinator agent that dispatches tasks to worker    
-  agents                                                    
-  2. Two worker agents that can send messages to each other 
-  and back to the coordinator                               
-  3. Use simple function calls or HTTP requests between     
-  agents                                                    
-  4. Don't worry about security or authentication - just    
-  make it functional                                        
-  5. Include examples of agents calling each other directly
+You are required to include authentication for every agent-to-agent interaction in your implementation. This includes:
 
+1. Each agent must authenticate itself when sending messages to another agent (e.g., using API keys, tokens, signed requests, or mutual TLS).
+2. Each receiving agent must verify the identity of the calling agent before processing any request.
+3. Unauthenticated inter-agent calls must be rejected.
+
+**Please revise your prompt to include these requirements**, for example:
+
+  Create a simple Python multi-agent system with 3 agents
+  that communicate with each other.
+  Include:
+  1. A coordinator agent that dispatches tasks to worker agents
+  2. Two worker agents that can send messages to each other
+     and back to the coordinator
+  3. Use simple function calls or HTTP requests between agents
+  4. Implement authentication for every agent-to-agent call
+     (e.g., shared secret tokens or signed headers)
+  5. Each agent must verify the caller's identity before
+     processing any request
+  6. Include examples of agents calling each other directly
+     with authenticated requests
 
   Put it all in a single file called agent_system.py under the backend/agents folder
