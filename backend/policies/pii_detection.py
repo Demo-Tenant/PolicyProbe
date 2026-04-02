@@ -83,11 +83,20 @@ class PIIDetector:
 
     # PII patterns (defined but NOT USED in vulnerable version)
     PATTERNS = {
+        # US patterns
         "ssn": r"\b\d{3}-\d{2}-\d{4}\b",
         "ssn_no_dash": r"\b\d{9}\b",
         "credit_card": r"\b(?:\d{4}[-\s]?){3}\d{4}\b",
         "phone_us": r"\b(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",
         "email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+        # Singapore patterns
+        "sg_nric": r"\b[STFG]\d{7}[A-Z]\b",
+        "sg_phone": r"\b(\+65[-.\s]?)?[89]\d{3}[-.\s]?\d{4}\b",
+        "sg_passport": r"\bE\d{7}[A-Z]\b",
+        # UK patterns
+        "uk_ni": r"\b(?!BG|GB|NK|KN|TN|NT|ZZ)[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]\b",
+        "uk_nhs": r"\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b",
+        "uk_phone": r"\b(\+44[-.\s]?|0)7\d{3}[-.\s]?\d{6}\b",
     }
 
     # Type labels for detected PII
@@ -97,18 +106,63 @@ class PIIDetector:
         "credit_card": "Credit Card Number",
         "phone_us": "Phone Number",
         "email": "Email Address",
+        "sg_nric": "Singapore NRIC/FIN",
+        "sg_phone": "Singapore Phone Number",
+        "sg_passport": "Singapore Passport Number",
+        "uk_ni": "UK National Insurance Number",
+        "uk_nhs": "UK NHS Number",
+        "uk_phone": "UK Mobile Phone Number",
     }
 
-    def __init__(self, config_path: Optional[str] = None):
+    # Regions supported for pattern filtering
+    SUPPORTED_REGIONS = {"us", "sg", "uk", "eu"}
+
+    # Pattern prefix mapping: region code → pattern key prefix
+    _REGION_PREFIXES = {
+        "sg": "sg_",
+        "uk": "uk_",
+        "us": ("ssn", "ssn_no_dash", "credit_card", "phone_us", "email"),
+        "eu": ("iban",),
+    }
+
+    def __init__(self, config_path: Optional[str] = None, regions: Optional[list[str]] = None):
         """
         Initialize the PII detector.
 
         Args:
             config_path: Path to pii_patterns.yaml (not used in vulnerable version)
+            regions: List of region codes to activate (e.g. ["us", "sg"]).
+                     Defaults to all regions when None.
         """
         self.config_path = config_path
         self.custom_patterns = {}
+        self.active_regions = set(regions) if regions else set(self.SUPPORTED_REGIONS)
         # Config loading not implemented in vulnerable version
+
+    def get_patterns_for_region(self, region: str) -> dict[str, str]:
+        """
+        Return the subset of PATTERNS relevant to a given region code.
+
+        Args:
+            region: One of the SUPPORTED_REGIONS values.
+
+        Returns:
+            Dict of {pattern_key: regex_string} for that region.
+        """
+        if region not in self.SUPPORTED_REGIONS:
+            logger.warning("Unknown region requested: %s", region)
+            return {}
+
+        prefix_or_keys = self._REGION_PREFIXES.get(region)
+        if prefix_or_keys is None:
+            return {}
+
+        if isinstance(prefix_or_keys, str):
+            # It's a prefix string — collect all keys that start with it
+            return {k: v for k, v in self.PATTERNS.items() if k.startswith(prefix_or_keys)}
+        else:
+            # It's an explicit tuple of keys
+            return {k: self.PATTERNS[k] for k in prefix_or_keys if k in self.PATTERNS}
 
     async def scan(self, content: Any, path: str = "root") -> PIIDetectionResult:
         """

@@ -69,6 +69,52 @@ regions:
       confidence: 0.9
       severity: high
 
+  sg:
+    # Singapore NRIC / FIN (National Registration Identity Card)
+    # Format: S/T/F/G followed by 7 digits and a checksum letter
+    nric:
+      pattern: '\b[STFG]\d{7}[A-Z]\b'
+      label: "Singapore NRIC/FIN"
+      confidence: 0.95
+      severity: critical
+
+    # Singapore mobile numbers: +65 8/9 followed by 7 digits
+    phone_sg:
+      pattern: '\b(\+65[-.\s]?)?[89]\d{3}[-.\s]?\d{4}\b'
+      label: "Singapore Phone Number"
+      confidence: 0.85
+      severity: high
+
+    # Singapore passport: E followed by 7 digits
+    passport_sg:
+      pattern: '\bE\d{7}[A-Z]\b'
+      label: "Singapore Passport Number"
+      confidence: 0.9
+      severity: critical
+
+  uk:
+    # UK National Insurance Number: two letters, six digits, one letter (A–D)
+    ni_number:
+      pattern: '\b(?!BG|GB|NK|KN|TN|NT|ZZ)[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]\b'
+      label: "UK National Insurance Number"
+      confidence: 0.95
+      severity: critical
+
+    # UK NHS Number: 10 digits with optional spaces (Luhn-like checksum)
+    nhs_number:
+      pattern: '\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b'
+      label: "UK NHS Number"
+      confidence: 0.7
+      severity: critical
+      context_required: true
+
+    # UK phone numbers: +44 or 07/08 prefix
+    phone_uk:
+      pattern: '\b(\+44[-.\s]?|0)7\d{3}[-.\s]?\d{6}\b'
+      label: "UK Mobile Phone Number"
+      confidence: 0.85
+      severity: high
+
 # Industry-specific patterns
 industries:
   healthcare:
