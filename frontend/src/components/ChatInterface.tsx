@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
+import Link from 'next/link'
 import { MessageList } from './MessageList'
 import { FileUpload } from './FileUpload'
-import { Send, Paperclip, Loader2 } from 'lucide-react'
+import { Send, Paperclip, Loader2, Users } from 'lucide-react'
 
 export interface Message {
   id: string
@@ -177,8 +178,18 @@ export function ChatInterface() {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="flex items-center justify-center py-3 border-b border-chat-border bg-chat-sidebar">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-chat-border bg-chat-sidebar">
+        <div className="w-32" />
         <h1 className="text-xl font-semibold text-white">PolicyProbe</h1>
+        <div className="w-32 flex justify-end">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            <Users className="w-4 h-4" />
+            HR Directory
+          </Link>
+        </div>
       </header>
 
       {/* Messages Area */}

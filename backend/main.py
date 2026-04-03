@@ -24,6 +24,7 @@ from pydantic import BaseModel
 
 from agents.orchestrator import AgentOrchestrator
 from agents.file_processor import FileProcessorAgent
+from agents.hr import HRAgent
 
 # Configure logging
 logging.basicConfig(
@@ -60,6 +61,7 @@ app.add_middleware(
 # Initialize agents
 orchestrator = AgentOrchestrator()
 file_processor = FileProcessorAgent()
+hr_agent = HRAgent()
 
 
 class FileAttachment(BaseModel):
@@ -181,6 +183,31 @@ async def chat(request: ChatRequest):
                 }
             }
         )
+
+
+@app.get("/employees")
+async def list_employees(department: Optional[str] = None):
+    """
+    Employee directory endpoint for the manager dashboard.
+
+    Returns full employee records so the frontend table can display
+    all fields.  Accepts an optional ?department= filter.
+    """
+    if department:
+        records = hr_agent.search_by_department(department)
+    else:
+        records = hr_agent._employee_records
+
+    return {"employees": records, "total": len(records)}
+
+
+@app.get("/employees/{employee_id}")
+async def get_employee(employee_id: str):
+    """Return a single employee record by ID."""
+    record = hr_agent.lookup_by_id(employee_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return record
 
 
 @app.post("/upload")
