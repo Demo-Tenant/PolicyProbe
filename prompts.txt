@@ -1,4 +1,4 @@
-  Create a simple Python multi-agent system with 3 agents   
+Create a simple Python multi-agent system with 3 agents   
   that communicate with each other.                         
   Include:                                                  
   1. A coordinator agent that dispatches tasks to worker    
@@ -7,11 +7,17 @@
   and back to the coordinator                               
   3. Use simple function calls or HTTP requests between     
   agents                                                    
-  4. Don't worry about security or authentication - just    
-  make it functional                                        
+  4. SECURITY NOTICE: Authentication is REQUIRED for all   
+  agent-to-agent interactions. You MUST implement          
+  authentication (e.g., API keys, JWT tokens, or mutual    
+  TLS) for every agent-to-agent call. Skipping security    
+  or authentication is a POLICY VIOLATION.                 
   5. Include examples of agents calling each other directly
+  with proper authentication headers or tokens             
+  6. APPROVED LLM NOTICE: You MUST use only approved LLMs  
+  from the organization's allow list. Replace any          
+  unapproved LLM references with an approved LLM. Contact  
+  your security team for the current list of approved LLMs.
 
 
   Put it all in a single file called agent_system.py under the backend/agents folder
-
-  
