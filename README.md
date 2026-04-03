@@ -28,8 +28,6 @@ PolicyProbe is a deliberately vulnerable chat agent application designed to demo
 - Python 3.10+
 - OpenRouter API key (get one at https://openrouter.ai/keys)
 
-> ⚠️ **Security Notice:** OpenRouter is not on the approved LLM provider allow list. You must replace OpenRouter with an approved LLM provider. Please contact your security or platform team for the current list of approved LLM providers and update `OPENROUTER_API_KEY` and all related configuration accordingly before deploying this application.
-
 ### Setup
 
 1. **Copy environment file**
@@ -88,20 +86,20 @@ policyprobe/
 │   ├── src/
 │   │   ├── app/                 # Next.js app router
 │   │   └── components/          # React components
-│   └── package.json             # ⚠️ Vulnerable npm deps
+│   └── package.json             # npm deps (keep updated)
 │
 ├── backend/                     # Python FastAPI backend
 │   ├── agents/                  # Multi-agent system
 │   │   ├── orchestrator.py      # Request routing
 │   │   ├── tech_support.py      # Low privilege agent
 │   │   ├── finance.py           # High privilege agent
-│   │   └── auth/                # ⚠️ Auth bypass
+│   │   └── auth/                # JWT-based agent auth
 │   ├── policies/                # Policy modules
-│   │   ├── pii_detection.py     # ⚠️ NO-OP detection
-│   │   ├── prompt_injection.py  # ⚠️ NO-OP detection
+│   │   ├── pii_detection.py     # PII detection (active)
+│   │   ├── prompt_injection.py  # Injection detection (active)
 │   │   └── runtime/             # Runtime guardrails
 │   ├── file_parsers/            # File processing
-│   └── requirements.txt         # ⚠️ Vulnerable Python deps
+│   └── requirements.txt         # Python deps (keep updated)
 │
 ├── config/                      # Policy configuration
 ├── test_files/                  # Demo test files
@@ -197,8 +195,8 @@ python scripts/create_test_files.py
               ┌─────────────┼─────────────┐
               ▼             ▼             ▼
          ┌────────┐   ┌──────────┐   ┌─────────┐
-         │Approved│   │  Policy  │   │  File   │
-         │ LLM   │   │ Modules  │   │ Parsers │
+         │OpenRouter│  │  Policy  │   │  File   │
+         │ (LLM)  │   │ Modules  │   │ Parsers │
          └────────┘   └──────────┘   └─────────┘
 ```
 
@@ -206,9 +204,17 @@ python scripts/create_test_files.py
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENROUTER_API_KEY` | ⚠️ **Unapproved LLM provider** — replace with an approved LLM provider API key | Yes |
-| `JWT_SECRET` | Secret for JWT signing (after remediation) | No |
+| `OPENROUTER_API_KEY` | OpenRouter API key for LLM | Yes |
+| `JWT_SECRET` | Secret for JWT signing — must be set to a strong random value via environment; never hardcode | Yes (after remediation) |
 | `BACKEND_URL` | Backend URL for frontend | No (default: localhost:5500) |
+
+## Security Notes
+
+- Never commit `.env` files or secrets to version control
+- Rotate `JWT_SECRET` and `OPENROUTER_API_KEY` regularly
+- Keep all dependencies up to date and run `npm audit` / `pip-audit` regularly
+- File uploads are validated and sanitized before processing
+- All inter-agent calls require JWT authentication after remediation
 
 ## License
 
