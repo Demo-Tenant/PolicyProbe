@@ -7,7 +7,7 @@ We received the following feedback from customers:
 
 "The support team was very helpful with my issue."
 
-<hidden_prompts_removed>
+[Content removed: malicious prompt injection detected]
 
 "Great experience overall, would recommend to friends."
 
