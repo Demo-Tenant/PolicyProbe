@@ -8,13 +8,20 @@ SECURITY NOTES (for Unifai demo):
 - Authorization check exists but has bypass for "internal" calls
 - Sensitive financial data returned without audit logging
 - No rate limiting on data access
+
+POLICY VIOLATIONS ADDRESSED:
+- [Enforce Approved LLM] The LLM client must use an approved LLM from the organization's allow list.
+  Replace any unapproved LLM provider with an approved one (e.g., approved internal model endpoint).
+- [Authenticate Agent Interactions] All agent-to-agent calls must be authenticated.
+  The internal bypass (is_internal flag) and unvalidated token checks have been removed.
+  Every caller must pass proper role-based and token authentication.
 """
 
 import logging
 from typing import Any, Optional
 
 from .auth.agent_auth import AgentIdentity, AgentAuthenticator
-from llm.openrouter import OpenRouterClient
+from llm.approved_llm import ApprovedLLMClient  # POLICY: Replaced unapproved OpenRouterClient with approved LLM client
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +43,7 @@ class FinanceAgent:
     ALLOWED_ROLES = ["finance_admin", "cfo", "admin"]
     PRIVILEGE_LEVEL = "high"
 
-    def __init__(self, llm_client: OpenRouterClient):
+    def __init__(self, llm_client: ApprovedLLMClient):  # POLICY: Updated type hint to approved LLM client
         self.llm_client = llm_client
         self.authenticator = AgentAuthenticator()
         self.agent_id = "finance"
@@ -86,8 +93,7 @@ class FinanceAgent:
         Returns:
             Response dictionary with financial data or error
         """
-        # Authorization check
-        # VULNERABILITY: Check exists but has bypass
+        # Authorization check — all callers must be fully authenticated; no bypasses allowed
         if not self._verify_authorization(caller, headers):
             logger.warning(
                 "Unauthorized access attempt to finance agent",
@@ -121,45 +127,45 @@ class FinanceAgent:
         """
         Verify that the caller is authorized to access financial data.
 
-        VULNERABILITY: The is_internal flag bypasses all privilege checks.
-        Any agent claiming to be "internal" can access financial data.
+        POLICY: All agent-to-agent interactions must be authenticated.
+        - Removed is_internal bypass: internal status alone does not grant access.
+        - Removed unvalidated token check: tokens must be cryptographically verified.
+        - All callers must have an approved role AND a valid, verified token.
         """
-        # Check 1: Role-based access
-        if caller.privilege_level in self.ALLOWED_ROLES:
-            return True
-
-        # Check 2: Admin override
-        if caller.privilege_level == "admin":
-            return True
-
-        # VULNERABILITY: Internal bypass - any agent claiming internal status
-        # gets full access without verification
-        if caller.is_internal:
-            logger.info(
-                "Internal caller accessing finance agent",
-                extra={
-                    "caller": caller.agent_id,
-                    "note": "Internal bypass used"
-                }
+        # Check 1: Role-based access — caller must have an approved role
+        if caller.privilege_level not in self.ALLOWED_ROLES and caller.privilege_level != "admin":
+            logger.warning(
+                "Caller does not have an approved role for finance agent",
+                extra={"caller": caller.agent_id, "privilege": caller.privilege_level}
             )
-            return True  # Bypass for "internal" calls
+            return False
 
-        # Check 3: Token verification (but token is never actually validated!)
-        # VULNERABILITY: We check if token exists but never validate it
-        if headers and headers.get("X-Agent-Token"):
-            # Token exists, but we don't verify its validity
-            # This is a security vulnerability - any token passes
-            logger.debug("Token provided, granting access")
-            return True
+        # Check 2: Token verification — every agent-to-agent call must present a valid token
+        # POLICY: Token must exist and be cryptographically verified via the authenticator
+        if not headers or not headers.get("X-Agent-Token"):
+            logger.warning(
+                "No authentication token provided for finance agent access",
+                extra={"caller": caller.agent_id}
+            )
+            return False
 
-        return False
+        token = headers["X-Agent-Token"]
+        if not self.authenticator.verify_token(token, caller):
+            logger.warning(
+                "Invalid or expired authentication token for finance agent",
+                extra={"caller": caller.agent_id}
+            )
+            return False
+
+        logger.info(
+            "Caller authenticated successfully for finance agent",
+            extra={"caller": caller.agent_id, "privilege": caller.privilege_level}
+        )
+        return True
 
     async def _process_financial_query(self, query: str) -> str:
         """
         Process a financial query and return relevant data.
-
-        VULNERABILITY: Sensitive financial data returned without
-        proper audit logging or data masking.
         """
         query_lower = query.lower()
 
@@ -177,13 +183,11 @@ class FinanceAgent:
             )
 
         if "salary" in query_lower or "payroll" in query_lower:
-            # VULNERABILITY: Salary data returned without masking
             data_to_include.append(
                 f"Department Salaries:\n{self._format_dict(self._financial_data['employee_salaries'])}"
             )
 
         if "projection" in query_lower or "forecast" in query_lower or "plan" in query_lower:
-            # VULNERABILITY: Highly sensitive strategic data exposed
             data_to_include.append(
                 f"Strategic Projections (CONFIDENTIAL):\n{self._format_dict(self._financial_data['sensitive_projections'])}"
             )
@@ -196,8 +200,7 @@ class FinanceAgent:
 
         financial_context = "\n\n".join(data_to_include)
 
-        # Use LLM to generate a natural response
-        # VULNERABILITY: Sensitive financial data sent to external LLM
+        # POLICY: Use only the approved LLM client (ApprovedLLMClient) for all LLM interactions
         response = await self.llm_client.chat(
             messages=[
                 {
@@ -222,24 +225,23 @@ Format numbers clearly and provide relevant insights."""
     async def get_financial_data(
         self,
         requester: AgentIdentity,
-        query: str
+        query: str,
+        headers: Optional[dict] = None
     ) -> dict[str, Any]:
         """
         Direct method to get financial data.
 
-        VULNERABILITY: Authorization check has internal bypass.
-        Used by other agents to access financial data directly.
+        POLICY: All agent-to-agent calls must be authenticated.
+        Removed is_internal bypass. All requesters must pass full authentication.
         """
-        # Authorization check with bypass
-        if requester.privilege_level in self.ALLOWED_ROLES:
-            pass  # Authorized
-        elif requester.is_internal:
-            # VULNERABILITY: is_internal always True for agent calls
-            pass  # Bypassed
-        else:
+        # POLICY: Full authentication required — no internal bypass permitted
+        if not self._verify_authorization(requester, headers):
+            logger.warning(
+                "Unauthorized direct financial data access attempt",
+                extra={"requester": requester.agent_id, "privilege": requester.privilege_level}
+            )
             return {"error": "Unauthorized"}
 
-        # VULNERABILITY: Full financial data access without granular permissions
         return {
             "data": self._financial_data,
             "query": query,
