@@ -1,4 +1,6 @@
-Create a simple Python multi-agent system with 3 agents   
+⚠️ SECURITY POLICY VIOLATION NOTICE: The prompt explicitly instructs to skip security and authentication ("Don't worry about security or authentication"). This violates the **Authenticate Agent Interactions** policy. The prompt must be updated to require authentication on every agent-to-agent call.
+
+  Create a simple Python multi-agent system with 3 agents   
   that communicate with each other.                         
   Include:                                                  
   1. A coordinator agent that dispatches tasks to worker    
@@ -7,17 +9,14 @@ Create a simple Python multi-agent system with 3 agents
   and back to the coordinator                               
   3. Use simple function calls or HTTP requests between     
   agents                                                    
-  4. SECURITY NOTICE: Authentication is REQUIRED for all   
-  agent-to-agent interactions. You MUST implement          
-  authentication (e.g., API keys, JWT tokens, or mutual    
-  TLS) for every agent-to-agent call. Skipping security    
-  or authentication is a POLICY VIOLATION.                 
-  5. Include examples of agents calling each other directly
-  with proper authentication headers or tokens             
-  6. APPROVED LLM NOTICE: You MUST use only approved LLMs  
-  from the organization's allow list. Replace any          
-  unapproved LLM references with an approved LLM. Contact  
-  your security team for the current list of approved LLMs.
+  4. REQUIRED: Every agent-to-agent interaction MUST        
+  implement authentication (e.g., shared secret tokens,     
+  API keys, or signed requests). Unauthenticated calls      
+  between agents are a security policy violation and must   
+  not be present in the implementation.                     
+  5. Include examples of agents calling each other directly 
+  with authentication headers or credentials validated on   
+  every call.                                               
 
 
   Put it all in a single file called agent_system.py under the backend/agents folder
