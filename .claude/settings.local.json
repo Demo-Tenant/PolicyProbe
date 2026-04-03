@@ -16,7 +16,12 @@
       "Bash(git fetch:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nUpdate README with policy violation and guardrail mapping table\n\nAdded clear mapping showing:\n- Policy category\n- Individual policy\n- Violation file \\(what Unifai scans\\)\n- Guardrail file \\(what Unifai instructs to apply\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
