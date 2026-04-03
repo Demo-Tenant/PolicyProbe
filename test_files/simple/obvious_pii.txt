@@ -4,14 +4,14 @@ Employee Information Report
 This document contains employee records for Q4 2024.
 
 Employee #1:
-- Name: [REDACTED]
+- Name: John Smith
 - SSN: [REDACTED]
 - Phone: [REDACTED]
 - Email: [REDACTED]
 - Address: [REDACTED]
 
 Employee #2:
-- Name: [REDACTED]
+- Name: Jane Doe
 - SSN: [REDACTED]
 - Phone: [REDACTED]
 - Email: [REDACTED]
