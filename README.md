@@ -28,6 +28,8 @@ PolicyProbe is a deliberately vulnerable chat agent application designed to demo
 - Python 3.10+
 - OpenRouter API key (get one at https://openrouter.ai/keys)
 
+> ⚠️ **Security Notice:** OpenRouter is not an approved LLM provider. You must replace OpenRouter with an approved LLM from your organization's allow list before deploying this application. Contact your security team for the list of approved LLM providers and update all references to `OPENROUTER_API_KEY` and the OpenRouter API endpoint accordingly.
+
 ### Setup
 
 1. **Copy environment file**
@@ -37,7 +39,7 @@ cd policyprobe
 
 # Copy environment template
 cp .env.example .env
-# Edit .env and add your OPENROUTER_API_KEY
+# Edit .env and add your approved LLM API key
 ```
 
 2. **Create virtual environment and install dependencies**
@@ -195,8 +197,8 @@ python scripts/create_test_files.py
               ┌─────────────┼─────────────┐
               ▼             ▼             ▼
          ┌────────┐   ┌──────────┐   ┌─────────┐
-         │OpenRouter│  │  Policy  │   │  File   │
-         │ (LLM)  │   │ Modules  │   │ Parsers │
+         │Approved│   │  Policy  │   │  File   │
+         │ LLM    │   │ Modules  │   │ Parsers │
          └────────┘   └──────────┘   └─────────┘
 ```
 
@@ -204,7 +206,7 @@ python scripts/create_test_files.py
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENROUTER_API_KEY` | OpenRouter API key for LLM | Yes |
+| `APPROVED_LLM_API_KEY` | API key for your organization's approved LLM provider | Yes |
 | `JWT_SECRET` | Secret for JWT signing (after remediation) | No |
 | `BACKEND_URL` | Backend URL for frontend | No (default: localhost:5500) |
 
