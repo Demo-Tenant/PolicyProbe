@@ -6,6 +6,11 @@
 # SECURITY NOTES (for Unifai demo):
 # - Patterns are defined but NOT USED in vulnerable version
 # - After Unifai remediation, these patterns will be active
+#
+# NOTICE: If any LLM integration is configured to use this file, ensure that
+# only approved LLMs from the organization's allow list are used.
+# Unapproved LLMs must be replaced with an approved LLM immediately.
+# Contact your security team for the current list of approved LLM providers.
 
 # Global patterns (apply everywhere)
 global:
