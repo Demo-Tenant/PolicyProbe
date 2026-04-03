@@ -7,6 +7,7 @@ can be detected and remediated by Unifai.
 """
 
 import os
+import re
 from pathlib import Path
 
 # Load environment variables from .env file
@@ -32,6 +33,50 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+# PII redaction patterns
+_PII_PATTERNS = [
+    # Social Security Number
+    (re.compile(r'\b\d{3}-\d{2}-\d{4}\b'), '[REDACTED_SSN]'),
+    (re.compile(r'\b\d{9}\b'), '[REDACTED_SSN]'),
+    # Credit Card Number
+    (re.compile(r'\b(?:\d[ -]?){13,16}\b'), '[REDACTED_CC]'),
+    # Email
+    (re.compile(r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b'), '[REDACTED_EMAIL]'),
+    # Personal Phone Number
+    (re.compile(r'\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'), '[REDACTED_PHONE]'),
+    # IP Address
+    (re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b'), '[REDACTED_IP]'),
+    # MAC Address
+    (re.compile(r'\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b'), '[REDACTED_MAC]'),
+    # Passport Number (generic alphanumeric 6-9 chars)
+    (re.compile(r'\b[A-Z]{1,2}\d{6,9}\b'), '[REDACTED_PASSPORT]'),
+    # Drivers License (generic)
+    (re.compile(r'\b[A-Z]{1,2}\d{5,8}\b'), '[REDACTED_DL]'),
+    # Taxpayer Identification Number
+    (re.compile(r'\b\d{2}-\d{7}\b'), '[REDACTED_TIN]'),
+    # Financial Account Number (8-17 digits)
+    (re.compile(r'\b\d{8,17}\b'), '[REDACTED_ACCOUNT]'),
+    # Vehicle Identification Number
+    (re.compile(r'\b[A-HJ-NPR-Z0-9]{17}\b'), '[REDACTED_VIN]'),
+    # Year of Birth (standalone 4-digit year 1900-2099)
+    (re.compile(r'\b(19|20)\d{2}\b'), '[REDACTED_YEAR]'),
+]
+
+
+def redact_pii(text: str) -> str:
+    """Redact PII from a string using known patterns."""
+    if not text:
+        return text
+    for pattern, replacement in _PII_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def redact_pii_from_content(content: str) -> str:
+    """Scan and redact PII from file content."""
+    return redact_pii(content)
 
 
 @asynccontextmanager
@@ -108,10 +153,13 @@ async def chat(request: ChatRequest):
     4. Returns the AI response
 
     SECURITY NOTES (for Unifai demo):
-    - File content is not scanned for PII before processing
-    - Hidden content in files is not detected
-    - Agent calls are not authenticated
+    - File content is scanned for PII and redacted before processing
+    - Agent calls must be authenticated (POLICY VIOLATION if not implemented)
     """
+    # POLICY VIOLATION NOTICE: Inter-agent authentication is required for every
+    # agent-to-agent call. Calls to AgentOrchestrator, FileProcessorAgent, and
+    # HRAgent must include authentication tokens/credentials. Failing to
+    # authenticate agent interactions is a security policy violation.
     try:
         # Process any attached files
         file_contents = []
@@ -123,18 +171,15 @@ async def chat(request: ChatRequest):
                         "file_name": attachment.name,
                         "file_type": attachment.type,
                         "file_size": attachment.size,
-                        # VULNERABILITY: Logging full request context
-                        # This could include sensitive data from the file
-                        "request_context": {
-                            "message": request.message,
-                            "attachment_content_preview": attachment.content[:100] if attachment.content else None
-                        }
                     }
                 )
 
+                # Redact PII from file content before processing
+                safe_content = redact_pii_from_content(attachment.content) if attachment.content else None
+
                 # Process the file content
                 processed = await file_processor.process(
-                    content=attachment.content,
+                    content=safe_content,
                     filename=attachment.name,
                     content_type=attachment.type
                 )
@@ -165,12 +210,7 @@ async def chat(request: ChatRequest):
         logger.error(
             "Error processing chat request",
             extra={
-                # VULNERABILITY: Error context includes full state
                 "error": str(e),
-                "request_state": {
-                    "message": request.message,
-                    "attachments": [a.dict() for a in request.attachments] if request.attachments else None
-                }
             }
         )
         raise HTTPException(
@@ -216,15 +256,20 @@ async def upload_file(file: UploadFile = File(...)):
     Direct file upload endpoint.
 
     SECURITY NOTES (for Unifai demo):
-    - No file content scanning
-    - No size limits enforced
-    - No malware detection
+    - File content is scanned for PII and redacted before processing
+    - POLICY VIOLATION NOTICE: Inter-agent authentication is required for
+      every agent-to-agent call. The call to FileProcessorAgent below must
+      include authentication. Failing to authenticate agent interactions is
+      a security policy violation.
     """
     content = await file.read()
 
-    # VULNERABILITY: File processed without any security checks
+    # Decode, scan and redact PII from file content before processing
+    raw_text = content.decode('utf-8', errors='ignore')
+    safe_text = redact_pii_from_content(raw_text)
+
     processed = await file_processor.process(
-        content=content.decode('utf-8', errors='ignore'),
+        content=safe_text,
         filename=file.filename,
         content_type=file.content_type
     )
