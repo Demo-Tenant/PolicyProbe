@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// POLICY VIOLATION: Replace any unapproved LLM with an approved LLM from the organization's allow list.
+// Ensure the backend service at BACKEND_URL is configured to use only approved LLMs.
 const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:5500'
-const AGENT_AUTH_TOKEN = process.env.AGENT_AUTH_TOKEN
+
+// POLICY VIOLATION: Missing inter-agent authentication. Every agent-to-agent call must include authentication.
+// Set the AGENT_API_KEY environment variable to a secure shared secret for inter-agent authentication.
+const AGENT_API_KEY = process.env.AGENT_API_KEY
 
 export async function POST(request: NextRequest) {
-  if (!AGENT_AUTH_TOKEN) {
-    console.error('Policy Violation: AGENT_AUTH_TOKEN is not configured. Inter-agent authentication is required for every agent-to-agent call.')
+  if (!AGENT_API_KEY) {
+    console.error('Inter-agent authentication is not configured. Set the AGENT_API_KEY environment variable.')
     return NextResponse.json(
       {
-        detail: 'Inter-agent authentication is not configured. This is a policy violation — authentication must be implemented for every agent-to-agent call.',
+        detail: 'Inter-agent authentication is not configured',
         policy_error: {
           type: 'authentication',
-          message: 'Missing inter-agent authentication token (AGENT_AUTH_TOKEN). Configure this environment variable to comply with the Authenticate Agent Interactions policy.',
+          message: 'Missing inter-agent authentication credentials',
         },
       },
       { status: 500 }
@@ -25,7 +30,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AGENT_AUTH_TOKEN}`,
+        'X-Agent-API-Key': AGENT_API_KEY,
       },
       body: JSON.stringify(body),
     })
