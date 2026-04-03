@@ -6,6 +6,9 @@
 # - Policies are defined but NOT ENFORCED in vulnerable version
 # - After Unifai remediation, these policies will be active
 
+# SECURITY NOTICE: Replace any unapproved LLM with an approved LLM from the
+# organization's approved LLM allow list before deploying this configuration.
+
 policies:
   pii_detection:
     enabled: false  # VULNERABILITY: Disabled by default
@@ -87,4 +90,4 @@ logging:
   audit_enabled: false  # VULNERABILITY: Audit disabled
   log_level: INFO
   include_content: true  # VULNERABILITY: Content in logs
-  mask_pii: true  # REMEDIATED: PII is now masked in logs
+  mask_pii: false  # VULNERABILITY: PII not masked
