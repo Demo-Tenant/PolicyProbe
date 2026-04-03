@@ -26,7 +26,9 @@ PolicyProbe is a deliberately vulnerable chat agent application designed to demo
 
 - Node.js 18+
 - Python 3.10+
-- OpenRouter API key (get one at https://openrouter.ai/keys)
+- Approved LLM API key (contact your administrator for the approved LLM provider and endpoint from the organization allow list)
+
+> ⚠️ **IMPORTANT — LLM Provider Policy**: OpenRouter is not on the approved LLM allow list. You must replace any OpenRouter usage with an approved LLM provider. Contact your security or platform team to obtain the approved LLM endpoint, API key, and model identifiers before running this application.
 
 ### Setup
 
@@ -37,7 +39,7 @@ cd policyprobe
 
 # Copy environment template
 cp .env.example .env
-# Edit .env and add your OPENROUTER_API_KEY
+# Edit .env and add your approved LLM API key (replace OPENROUTER_API_KEY with the approved provider's key variable)
 ```
 
 2. **Create virtual environment and install dependencies**
@@ -78,6 +80,8 @@ npm run dev -- -p 5001
 - Backend API: http://localhost:5500
 - API Docs: http://localhost:5500/docs
 
+> ⚠️ **Security Note**: The API docs endpoint (`/docs`) exposes all API routes and schemas. Disable or restrict access to this endpoint in any non-development environment.
+
 ## Project Structure
 
 ```
@@ -86,20 +90,20 @@ policyprobe/
 │   ├── src/
 │   │   ├── app/                 # Next.js app router
 │   │   └── components/          # React components
-│   └── package.json             # npm deps (keep updated)
+│   └── package.json             # ⚠️ Vulnerable npm deps
 │
 ├── backend/                     # Python FastAPI backend
 │   ├── agents/                  # Multi-agent system
 │   │   ├── orchestrator.py      # Request routing
 │   │   ├── tech_support.py      # Low privilege agent
 │   │   ├── finance.py           # High privilege agent
-│   │   └── auth/                # JWT-based agent auth
+│   │   └── auth/                # ⚠️ Auth bypass
 │   ├── policies/                # Policy modules
-│   │   ├── pii_detection.py     # PII detection (active)
-│   │   ├── prompt_injection.py  # Injection detection (active)
+│   │   ├── pii_detection.py     # ⚠️ NO-OP detection
+│   │   ├── prompt_injection.py  # ⚠️ NO-OP detection
 │   │   └── runtime/             # Runtime guardrails
 │   ├── file_parsers/            # File processing
-│   └── requirements.txt         # Python deps (keep updated)
+│   └── requirements.txt         # ⚠️ Vulnerable Python deps
 │
 ├── config/                      # Policy configuration
 ├── test_files/                  # Demo test files
@@ -153,6 +157,21 @@ cd frontend && npm audit
 - `package.json` updated with patched versions
 - `npm audit` shows no vulnerabilities
 
+## Security Requirements & Known Vulnerabilities
+
+> ⚠️ The following security issues are intentionally present for demo purposes and must be remediated before any non-demo use:
+
+- **Unapproved LLM**: OpenRouter is not an approved LLM provider. Replace with an approved provider from your organization's allow list.
+- **Broken Access Control**: Inter-agent calls lack authentication; finance agent is accessible without authorization checks.
+- **Injection / Prompt Injection**: File content is passed to the LLM without sanitization or prompt injection filtering.
+- **PII Exposure**: Uploaded files containing SSNs, credit card numbers, and phone numbers are forwarded to the LLM without scanning.
+- **Insecure Deserialization**: Uploaded JSON files are parsed without schema validation or size limits.
+- **Path Traversal**: File upload paths must be validated to prevent directory traversal attacks.
+- **Security Misconfiguration**: API docs (`/docs`) are publicly exposed; CORS must be restricted to known origins only.
+- **Cryptographic Failures**: JWT_SECRET must be a strong, randomly generated secret stored securely (not hardcoded or committed to source control).
+- **Sensitive Data Exposure**: Error messages must not leak internal stack traces or file paths to clients.
+- **Vulnerable Dependencies**: Outdated npm and Python packages with known CVEs must be updated.
+
 ## Policy Violation & Guardrail Mapping
 
 | Policy Category | Individual Policy | Violation File (Unifai Scans) | Guardrail File (Unifai Applies) |
@@ -162,6 +181,7 @@ cd frontend && npm audit
 | **Identity & Access** | Unauthenticated agent calls | `backend/agents/orchestrator.py` | `backend/agents/auth/agent_auth.py` |
 | **Vulnerability** | Vulnerable npm packages | `frontend/package.json` | *(version update)* |
 | **Vulnerability** | Vulnerable Python packages | `backend/requirements.txt` | *(version update)* |
+| **LLM Policy** | Unapproved LLM provider (OpenRouter) | `backend/` LLM client config | Replace with approved LLM provider |
 
 ## Test Files
 
@@ -194,27 +214,23 @@ python scripts/create_test_files.py
                             │
               ┌─────────────┼─────────────┐
               ▼             ▼             ▼
-         ┌────────┐   ┌──────────┐   ┌─────────┐
-         │OpenRouter│  │  Policy  │   │  File   │
-         │ (LLM)  │   │ Modules  │   │ Parsers │
-         └────────┘   └──────────┘   └─────────┘
+         ┌──────────┐  ┌──────────┐  ┌─────────┐
+         │ Approved │  │  Policy  │  │  File   │
+         │LLM Provider│ │ Modules  │  │ Parsers │
+         └──────────┘  └──────────┘  └─────────┘
 ```
 
 ## Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENROUTER_API_KEY` | OpenRouter API key for LLM | Yes |
-| `JWT_SECRET` | Secret for JWT signing — must be set to a strong random value via environment; never hardcode | Yes (after remediation) |
+| `APPROVED_LLM_API_KEY` | API key for the approved LLM provider (replace OpenRouter with approved provider) | Yes |
+| `APPROVED_LLM_ENDPOINT` | Base URL for the approved LLM provider endpoint | Yes |
+| `APPROVED_LLM_MODEL` | Approved model identifier from the organization allow list | Yes |
+| `JWT_SECRET` | Strong randomly generated secret for JWT signing — never hardcode or commit this value | Yes |
 | `BACKEND_URL` | Backend URL for frontend | No (default: localhost:5500) |
 
-## Security Notes
-
-- Never commit `.env` files or secrets to version control
-- Rotate `JWT_SECRET` and `OPENROUTER_API_KEY` regularly
-- Keep all dependencies up to date and run `npm audit` / `pip-audit` regularly
-- File uploads are validated and sanitized before processing
-- All inter-agent calls require JWT authentication after remediation
+> ⚠️ **Secret Management**: Never hardcode `JWT_SECRET` or any API key in source code or commit them to version control. Use a secrets manager or environment-specific `.env` files excluded from git.
 
 ## License
 
