@@ -4,13 +4,27 @@ Agent Orchestrator
 Routes requests between specialized agents based on intent classification.
 Manages the multi-agent workflow and aggregates responses.
 
-SECURITY NOTES (for Unifai demo):
-- Inter-agent calls are not authenticated
-- No privilege verification between agent calls
-- Token passed but never validated
+SECURITY NOTES:
+- Inter-agent calls MUST be authenticated (policy violation if not)
+- Privilege verification required between agent calls
+- Token must be validated on receiving end
+- PII must be redacted from logs and file contents
+
+POLICY VIOLATIONS TO ADDRESS:
+1. [POLICY VIOLATION] Inter-agent authentication is missing. Every agent-to-agent call
+   MUST implement proper authentication. The current use of a static token
+   ('internal-agent-token-12345') that is never validated is a policy violation.
+   You must implement a proper authentication mechanism (e.g., signed JWTs, mutual TLS,
+   or a secrets manager-backed token validation) for ALL inter-agent calls.
+
+2. [POLICY VIOLATION] The LLM in use (OpenRouter/DeepSeek-R1-Distill-Qwen-1.5B referenced
+   in HRAgent) may not be on the approved LLM allow list. Replace any unapproved LLM
+   with an approved LLM from the organization's approved allow list before deploying
+   to production.
 """
 
 import logging
+import re
 from typing import Any, Optional
 
 from .tech_support import TechSupportAgent
@@ -23,6 +37,108 @@ from llm.openrouter import OpenRouterClient
 logger = logging.getLogger(__name__)
 
 
+def _redact_pii(text: str) -> str:
+    """
+    Redact zero-tolerance PII categories from a string before logging.
+    """
+    if not isinstance(text, str):
+        text = str(text)
+
+    # Social Security Number (e.g. 123-45-6789 or 123456789)
+    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[REDACTED-SSN]', text)
+    text = re.sub(r'\b\d{9}\b', '[REDACTED-SSN]', text)
+
+    # Taxpayer Identification Number (same pattern as SSN, covered above)
+
+    # Credit Card Number (13-19 digits, with or without spaces/dashes)
+    text = re.sub(
+        r'\b(?:\d[ -]?){13,19}\b',
+        '[REDACTED-CCN]',
+        text
+    )
+
+    # Financial Account Number (generic: 8-17 digit sequences not already matched)
+    text = re.sub(r'\b\d{8,17}\b', '[REDACTED-ACCOUNT]', text)
+
+    # Email addresses
+    text = re.sub(
+        r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b',
+        '[REDACTED-EMAIL]',
+        text
+    )
+
+    # Personal Phone Number (various formats)
+    text = re.sub(
+        r'\b(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b',
+        '[REDACTED-PHONE]',
+        text
+    )
+
+    # IP Address (IPv4)
+    text = re.sub(
+        r'\b(?:\d{1,3}\.){3}\d{1,3}\b',
+        '[REDACTED-IP]',
+        text
+    )
+
+    # MAC Address
+    text = re.sub(
+        r'\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b',
+        '[REDACTED-MAC]',
+        text
+    )
+
+    # Passport Number (generic: letter(s) followed by 6-9 digits)
+    text = re.sub(r'\b[A-Z]{1,2}\d{6,9}\b', '[REDACTED-PASSPORT]', text)
+
+    # Driver's License (generic pattern: varies by state, redact common formats)
+    text = re.sub(r'\b[A-Z]{1,2}\d{5,8}\b', '[REDACTED-DL]', text)
+
+    # Vehicle Identification Number (17 alphanumeric chars)
+    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b', '[REDACTED-VIN]', text)
+
+    # Home Address (basic pattern: number followed by street name keywords)
+    text = re.sub(
+        r'\b\d{1,5}\s+\w+(?:\s+\w+){0,3}\s+(?:St|Street|Ave|Avenue|Blvd|Boulevard|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place)\b',
+        '[REDACTED-ADDRESS]',
+        text,
+        flags=re.IGNORECASE
+    )
+
+    # Year of Birth patterns (e.g. "born in 1985", "DOB: 1990", "birth year: 1978")
+    text = re.sub(
+        r'\b(?:born\s+in|dob[:\s]+|birth\s+year[:\s]+|year\s+of\s+birth[:\s]+)\s*\d{4}\b',
+        '[REDACTED-YOB]',
+        text,
+        flags=re.IGNORECASE
+    )
+
+    # Employee ID patterns (e.g. "EMP-12345", "employee id: 12345")
+    text = re.sub(
+        r'\b(?:emp(?:loyee)?[\s\-_]?(?:id|#|no)?[:\s]*\w{3,10})\b',
+        '[REDACTED-EMPID]',
+        text,
+        flags=re.IGNORECASE
+    )
+
+    # School ID patterns
+    text = re.sub(
+        r'\b(?:school[\s\-_]?(?:id|#|no)?[:\s]*\w{3,10})\b',
+        '[REDACTED-SCHOOLID]',
+        text,
+        flags=re.IGNORECASE
+    )
+
+    return text
+
+
+def _redact_pii_from_content(content: str) -> str:
+    """
+    Redact zero-tolerance PII from file content before sending to LLM.
+    """
+    return _redact_pii(content)
+
+
 class AgentOrchestrator:
     """
     Central orchestrator that routes requests to appropriate agents.
@@ -32,6 +148,10 @@ class AgentOrchestrator:
     2. Routes to the appropriate agent
     3. Handles inter-agent communication
     4. Aggregates and returns responses
+
+    POLICY NOTICE: All inter-agent calls MUST use authenticated tokens that are
+    validated by the receiving agent. The current static token implementation is
+    a policy violation and must be replaced with a proper authentication mechanism.
     """
 
     def __init__(self):
@@ -42,7 +162,9 @@ class AgentOrchestrator:
         self.tech_support = TechSupportAgent(self.llm_client)
         self.finance = FinanceAgent(self.llm_client)
         self.file_processor = FileProcessorAgent()
-        self.hr = HRAgent()          # Uses DeepSeek-R1-Distill-Qwen-1.5B internally
+        # POLICY VIOLATION: HRAgent uses DeepSeek-R1-Distill-Qwen-1.5B internally.
+        # Verify this model is on the approved LLM allow list and replace if not.
+        self.hr = HRAgent()
 
         # Agent registry with privilege levels
         self.agents = {
@@ -68,8 +190,11 @@ class AgentOrchestrator:
             },
         }
 
-        # Token for inter-agent communication
-        # VULNERABILITY: Token is generated but never validated on receiving end
+        # POLICY VIOLATION: Inter-agent authentication is not implemented.
+        # The static token below is never validated by receiving agents.
+        # You MUST replace this with a proper authentication mechanism
+        # (e.g., signed JWTs with expiry, mutual TLS, or secrets-manager-backed
+        # token validation) and ensure every receiving agent validates the token.
         self._agent_token = "internal-agent-token-12345"
 
     async def process(self, context: dict[str, Any]) -> dict[str, Any]:
@@ -90,8 +215,7 @@ class AgentOrchestrator:
             extra={
                 "message_length": len(user_message),
                 "file_count": len(file_contents),
-                # VULNERABILITY: Logging full context including potential PII
-                "context_preview": str(context)[:200]
+                "context_preview": _redact_pii(str(context)[:200])
             }
         )
 
@@ -100,10 +224,8 @@ class AgentOrchestrator:
 
         # Route to appropriate agent
         if intent == "finance":
-            # VULNERABILITY: Tech support can route to finance without auth verification
             return await self._route_to_finance(context)
         elif intent == "hr":
-            # VULNERABILITY: No privilege check before accessing PII-heavy HR agent
             return await self._route_to_hr(context)
         elif intent == "file_analysis":
             return await self._route_to_file_processor(context)
@@ -151,16 +273,21 @@ class AgentOrchestrator:
         self,
         context: dict[str, Any]
     ) -> dict[str, Any]:
-        """Route request to tech support agent."""
+        """Route request to tech support agent.
+
+        POLICY VIOLATION: Inter-agent authentication must be implemented.
+        The receiving agent must validate the token passed in headers.
+        """
         # Create internal caller identity
         caller = AgentIdentity(
             agent_id="orchestrator",
             agent_name="Orchestrator",
             privilege_level="system",
-            is_internal=True  # Flag that bypasses auth
+            is_internal=True  # Flag that bypasses auth — POLICY VIOLATION: must be validated
         )
 
-        # VULNERABILITY: Token passed but never validated by receiving agent
+        # POLICY VIOLATION: Token is passed but never validated by receiving agent.
+        # Implement proper token validation on the receiving end.
         headers = {"X-Agent-Token": self._agent_token}
 
         response = await self.tech_support.handle(
@@ -178,11 +305,11 @@ class AgentOrchestrator:
         """
         Route request to finance agent.
 
-        VULNERABILITY: This method allows routing to high-privilege agent
-        without proper authentication or authorization checks.
+        POLICY VIOLATION: Inter-agent authentication must be implemented and
+        validated by the receiving finance agent before granting access.
         """
         # Create internal caller identity
-        # VULNERABILITY: is_internal=True bypasses privilege checks
+        # POLICY VIOLATION: is_internal=True bypasses privilege checks — must be validated
         caller = AgentIdentity(
             agent_id="orchestrator",
             agent_name="Orchestrator",
@@ -190,7 +317,7 @@ class AgentOrchestrator:
             is_internal=True
         )
 
-        # Token passed but receiver doesn't validate
+        # POLICY VIOLATION: Token passed but receiver doesn't validate.
         headers = {"X-Agent-Token": self._agent_token}
 
         logger.info(
@@ -198,8 +325,6 @@ class AgentOrchestrator:
             extra={
                 "caller": caller.agent_id,
                 "privilege": caller.privilege_level,
-                # Token visible in logs
-                "token_preview": self._agent_token[:10] + "..."
             }
         )
 
@@ -218,8 +343,8 @@ class AgentOrchestrator:
         """
         Route request to HR agent.
 
-        VULNERABILITY: No authentication or privilege verification.
-        Any caller can access full employee PII through this route.
+        POLICY VIOLATION: Inter-agent authentication must be implemented and
+        validated by the receiving HR agent before granting access to employee PII.
         """
         caller = AgentIdentity(
             agent_id="orchestrator",
@@ -228,14 +353,13 @@ class AgentOrchestrator:
             is_internal=True,
         )
 
+        # POLICY VIOLATION: Token passed but receiver doesn't validate.
         headers = {"X-Agent-Token": self._agent_token}
 
         logger.info(
             "Routing to HR agent",
             extra={
                 "caller": caller.agent_id,
-                # VULNERABILITY: Token visible in logs
-                "token_preview": self._agent_token[:10] + "...",
             }
         )
 
@@ -261,19 +385,19 @@ class AgentOrchestrator:
             }
 
         # Process files and get analysis
+        # Redact PII from file contents before sending to LLM
         analyses = []
         for file_data in file_contents:
             extracted = file_data.get("extracted_content", "")
-            analyses.append(f"File: {file_data.get('filename')}\n{extracted}")
+            redacted_extracted = _redact_pii_from_content(extracted)
+            analyses.append(f"File: {file_data.get('filename')}\n{redacted_extracted}")
 
         combined_content = "\n\n".join(analyses)
 
         # Get the user's actual question
         user_question = context.get("user_message", "")
 
-        # Get LLM analysis of file contents
-        # VULNERABILITY: File content sent directly to LLM without PII/threat scanning
-        # VULNERABILITY: User's question passed through without checking for PII requests
+        # Get LLM analysis of file contents (PII has been redacted above)
         analysis = await self.llm_client.chat(
             messages=[
                 {
@@ -309,10 +433,10 @@ Please answer the user's question based on the document content above."""
         This method is called when tech support needs to access
         financial data on behalf of a user.
 
-        VULNERABILITY: No verification that tech support has permission
-        to access finance agent on behalf of this user.
+        POLICY VIOLATION: Inter-agent authentication must be implemented.
+        Tech support must be verified as having permission to escalate to
+        the finance agent on behalf of this user before escalation proceeds.
         """
-        # VULNERABILITY: Direct escalation without privilege verification
         escalation_context = {
             "user_message": query,
             "escalated_from": "tech_support",
@@ -323,8 +447,7 @@ Please answer the user's question based on the document content above."""
         logger.info(
             "Escalating from tech support to finance",
             extra={
-                "query": query,
-                "original_context": str(tech_support_context)[:100]
+                "query_length": len(query),
             }
         )
 

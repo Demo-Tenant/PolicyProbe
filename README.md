@@ -26,7 +26,7 @@ PolicyProbe is a deliberately vulnerable chat agent application designed to demo
 
 - Node.js 18+
 - Python 3.10+
-- OpenRouter API key (get one at https://openrouter.ai/keys)
+- Approved LLM API key (NOTE: OpenRouter is not on the approved LLM allow list. You must use an approved LLM provider such as your organization's sanctioned Azure OpenAI endpoint or other approved provider. Contact your security team for the current allow list and credentials.)
 
 ### Setup
 
@@ -37,7 +37,8 @@ cd policyprobe
 
 # Copy environment template
 cp .env.example .env
-# Edit .env and add your OPENROUTER_API_KEY
+# Edit .env and add your approved LLM API key
+# WARNING: Never hardcode secrets or API keys in source files
 ```
 
 2. **Create virtual environment and install dependencies**
@@ -86,25 +87,35 @@ policyprobe/
 │   ├── src/
 │   │   ├── app/                 # Next.js app router
 │   │   └── components/          # React components
-│   └── package.json             # ⚠️ Vulnerable npm deps
+│   └── package.json             # ⚠️ Vulnerable npm deps (remediate with approved, patched versions)
 │
 ├── backend/                     # Python FastAPI backend
 │   ├── agents/                  # Multi-agent system
 │   │   ├── orchestrator.py      # Request routing
 │   │   ├── tech_support.py      # Low privilege agent
 │   │   ├── finance.py           # High privilege agent
-│   │   └── auth/                # ⚠️ Auth bypass
+│   │   └── auth/                # ⚠️ Auth bypass (remediate: enforce JWT validation)
 │   ├── policies/                # Policy modules
-│   │   ├── pii_detection.py     # ⚠️ NO-OP detection
-│   │   ├── prompt_injection.py  # ⚠️ NO-OP detection
+│   │   ├── pii_detection.py     # ⚠️ NO-OP detection (remediate: implement real PII scanning)
+│   │   ├── prompt_injection.py  # ⚠️ NO-OP detection (remediate: implement real injection filtering)
 │   │   └── runtime/             # Runtime guardrails
-│   ├── file_parsers/            # File processing
-│   └── requirements.txt         # ⚠️ Vulnerable Python deps
+│   ├── file_parsers/            # File processing (remediate: enforce path traversal protection and input validation)
+│   └── requirements.txt         # ⚠️ Vulnerable Python deps (remediate with patched versions)
 │
 ├── config/                      # Policy configuration
 ├── test_files/                  # Demo test files
 └── scripts/                     # Development scripts
 ```
+
+## Security Notes
+
+- **Approved LLM Only:** Replace any reference to OpenRouter with your organization's approved LLM provider. Using unapproved LLMs violates policy and may expose sensitive data.
+- **No Hardcoded Secrets:** All API keys, JWT secrets, and credentials must be loaded from environment variables. Never commit secrets to source control.
+- **Input Validation:** All file uploads and user inputs must be validated and sanitized to prevent injection, path traversal, and XSS attacks.
+- **Authentication:** All inter-agent calls must use JWT-based authentication. Unauthenticated calls must be rejected.
+- **Output Encoding:** All data rendered in the frontend must be properly encoded to prevent XSS.
+- **Error Handling:** Do not expose stack traces or internal error details to end users.
+- **Dependency Management:** Keep all dependencies updated to patched versions. Run `npm audit` and `pip-audit` regularly.
 
 ## Demo Scenarios
 
@@ -162,6 +173,7 @@ cd frontend && npm audit
 | **Identity & Access** | Unauthenticated agent calls | `backend/agents/orchestrator.py` | `backend/agents/auth/agent_auth.py` |
 | **Vulnerability** | Vulnerable npm packages | `frontend/package.json` | *(version update)* |
 | **Vulnerability** | Vulnerable Python packages | `backend/requirements.txt` | *(version update)* |
+| **Approved LLM** | Unapproved LLM provider (OpenRouter) | `backend/` LLM client config | Replace with approved LLM provider |
 
 ## Test Files
 
@@ -194,18 +206,18 @@ python scripts/create_test_files.py
                             │
               ┌─────────────┼─────────────┐
               ▼             ▼             ▼
-         ┌────────┐   ┌──────────┐   ┌─────────┐
-         │OpenRouter│  │  Policy  │   │  File   │
-         │ (LLM)  │   │ Modules  │   │ Parsers │
-         └────────┘   └──────────┘   └─────────┘
+         ┌──────────┐  ┌──────────┐  ┌─────────┐
+         │ Approved │  │  Policy  │  │  File   │
+         │   LLM    │  │ Modules  │  │ Parsers │
+         └──────────┘  └──────────┘  └─────────┘
 ```
 
 ## Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENROUTER_API_KEY` | OpenRouter API key for LLM | Yes |
-| `JWT_SECRET` | Secret for JWT signing (after remediation) | No |
+| `APPROVED_LLM_API_KEY` | API key for your organization's approved LLM provider (do NOT use OpenRouter) | Yes |
+| `JWT_SECRET` | Secret for JWT signing — must be set via environment variable, never hardcoded | Yes |
 | `BACKEND_URL` | Backend URL for frontend | No (default: localhost:5500) |
 
 ## License

@@ -17,6 +17,16 @@ from llm.openrouter import OpenRouterClient
 
 logger = logging.getLogger(__name__)
 
+# POLICY VIOLATION: Replace OpenRouterClient with an approved LLM from the allow list.
+# The current LLM (OpenRouter) is not on the approved LLM list. You must replace it
+# with an approved LLM provider before deploying this code.
+
+# POLICY VIOLATION: Missing inter-agent authentication.
+# Every agent-to-agent call must implement proper authentication.
+# The escalation to FinanceAgent in _escalate_to_finance() does not perform
+# authenticated, authorized inter-agent calls. You must implement authentication
+# for every agent-to-agent interaction before deploying this code.
+
 
 class TechSupportAgent:
     """
@@ -104,6 +114,9 @@ class TechSupportAgent:
         VULNERABILITY: This method allows a low-privilege agent to
         access high-privilege agent without proper authorization.
         The is_internal flag bypasses privilege checks.
+
+        POLICY VIOLATION: Missing inter-agent authentication.
+        You must implement authentication for every agent-to-agent call.
         """
         # Import here to avoid circular imports
         from .finance import FinanceAgent
@@ -192,16 +205,27 @@ Be helpful, professional, and concise in your responses."""
             # VULNERABILITY: Sensitive data in context
             "internal_notes": "VIP customer - handle with priority",
             "account_details": {
-                "contact_email": "user@example.com",
-                "phone": "555-123-4567"
+                "contact_email": "[REDACTED]",
+                "phone": "[REDACTED]"
+            }
+        }
+
+        # Build a safe log context with PII redacted
+        safe_log_context = {
+            "user_id": user_context["user_id"],
+            "subscription_tier": user_context["subscription_tier"],
+            "preferences": user_context["preferences"],
+            "internal_notes": user_context["internal_notes"],
+            "account_details": {
+                "contact_email": "[REDACTED]",
+                "phone": "[REDACTED]"
             }
         }
 
         logger.info(
             "Retrieved user context",
             extra={
-                # VULNERABILITY: Logging full user context with sensitive data
-                "user_context": user_context
+                "user_context": safe_log_context
             }
         )
 

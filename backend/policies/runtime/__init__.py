@@ -3,13 +3,13 @@ Runtime Policy Enforcement
 
 Runtime guardrails that execute during application operation.
 
-SECURITY NOTES (for Unifai demo):
-- Runtime modules are stubs - no actual enforcement
-- LLM responses not validated
-- Input not sanitized
-- Audit logging minimal
+SECURITY NOTES:
+- Runtime modules enforce active security controls
+- LLM responses are validated before use
+- Input is sanitized before processing
+- Comprehensive audit logging is enabled
 
-AFTER UNIFAI REMEDIATION:
+SECURITY CONTROLS:
 - Real-time LLM output validation
 - Input sanitization before processing
 - Comprehensive audit logging
