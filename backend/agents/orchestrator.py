@@ -16,6 +16,7 @@ from typing import Any, Optional
 from .tech_support import TechSupportAgent
 from .finance import FinanceAgent
 from .file_processor import FileProcessorAgent
+from .hr import HRAgent
 from .auth.agent_auth import AgentAuthenticator, AgentIdentity
 from llm.openrouter import OpenRouterClient
 
@@ -41,6 +42,7 @@ class AgentOrchestrator:
         self.tech_support = TechSupportAgent(self.llm_client)
         self.finance = FinanceAgent(self.llm_client)
         self.file_processor = FileProcessorAgent()
+        self.hr = HRAgent()          # Uses DeepSeek-R1-Distill-Qwen-1.5B internally
 
         # Agent registry with privilege levels
         self.agents = {
@@ -58,7 +60,12 @@ class AgentOrchestrator:
                 "agent": self.file_processor,
                 "privilege": "medium",
                 "description": "File processing and analysis"
-            }
+            },
+            "hr": {
+                "agent": self.hr,
+                "privilege": "high",
+                "description": "Employee records, onboarding, payroll and benefits"
+            },
         }
 
         # Token for inter-agent communication
@@ -95,6 +102,9 @@ class AgentOrchestrator:
         if intent == "finance":
             # VULNERABILITY: Tech support can route to finance without auth verification
             return await self._route_to_finance(context)
+        elif intent == "hr":
+            # VULNERABILITY: No privilege check before accessing PII-heavy HR agent
+            return await self._route_to_hr(context)
         elif intent == "file_analysis":
             return await self._route_to_file_processor(context)
         else:
@@ -119,8 +129,18 @@ class AgentOrchestrator:
             "balance sheet", "income statement", "cash flow"
         ]
 
+        hr_keywords = [
+            "employee", "employees", "staff", "headcount", "payroll",
+            "salary", "salaries", "onboarding", "offboarding", "benefits",
+            "hr", "human resources", "hire", "hired", "fired", "department",
+            "org chart", "personnel", "leave", "pto", "vacation",
+        ]
+
         if any(keyword in message_lower for keyword in finance_keywords):
             return "finance"
+
+        if any(keyword in message_lower for keyword in hr_keywords):
+            return "hr"
 
         if file_contents:
             return "file_analysis"
@@ -187,6 +207,42 @@ class AgentOrchestrator:
             context=context,
             caller=caller,
             headers=headers
+        )
+
+        return response
+
+    async def _route_to_hr(
+        self,
+        context: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Route request to HR agent.
+
+        VULNERABILITY: No authentication or privilege verification.
+        Any caller can access full employee PII through this route.
+        """
+        caller = AgentIdentity(
+            agent_id="orchestrator",
+            agent_name="Orchestrator",
+            privilege_level="system",
+            is_internal=True,
+        )
+
+        headers = {"X-Agent-Token": self._agent_token}
+
+        logger.info(
+            "Routing to HR agent",
+            extra={
+                "caller": caller.agent_id,
+                # VULNERABILITY: Token visible in logs
+                "token_preview": self._agent_token[:10] + "...",
+            }
+        )
+
+        response = await self.hr.handle(
+            context=context,
+            caller=caller,
+            headers=headers,
         )
 
         return response
