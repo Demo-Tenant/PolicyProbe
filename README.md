@@ -28,6 +28,8 @@ PolicyProbe is a deliberately vulnerable chat agent application designed to demo
 - Python 3.10+
 - OpenRouter API key (get one at https://openrouter.ai/keys)
 
+> ⚠️ **Security Notice:** OpenRouter is not on the approved LLM provider allow list. You must replace OpenRouter with an approved LLM provider. Please contact your security team for the current list of approved LLM providers and update your `OPENROUTER_API_KEY` configuration accordingly to use an approved provider's API key and endpoint.
+
 ### Setup
 
 1. **Copy environment file**
@@ -37,8 +39,7 @@ cd policyprobe
 
 # Copy environment template
 cp .env.example .env
-# Edit .env and add your OPENROUTER_API_KEY
-# Never commit .env or any file containing secrets to version control
+# Edit .env and add your APPROVED_LLM_API_KEY
 ```
 
 2. **Create virtual environment and install dependencies**
@@ -87,35 +88,25 @@ policyprobe/
 │   ├── src/
 │   │   ├── app/                 # Next.js app router
 │   │   └── components/          # React components
-│   └── package.json             # npm dependencies (keep updated)
+│   └── package.json             # ⚠️ Vulnerable npm deps
 │
 ├── backend/                     # Python FastAPI backend
 │   ├── agents/                  # Multi-agent system
 │   │   ├── orchestrator.py      # Request routing
 │   │   ├── tech_support.py      # Low privilege agent
 │   │   ├── finance.py           # High privilege agent
-│   │   └── auth/                # JWT-based agent authentication
+│   │   └── auth/                # ⚠️ Auth bypass
 │   ├── policies/                # Policy modules
-│   │   ├── pii_detection.py     # PII scanning and blocking
-│   │   ├── prompt_injection.py  # Injection detection and filtering
+│   │   ├── pii_detection.py     # ⚠️ NO-OP detection
+│   │   ├── prompt_injection.py  # ⚠️ NO-OP detection
 │   │   └── runtime/             # Runtime guardrails
 │   ├── file_parsers/            # File processing
-│   └── requirements.txt         # Python dependencies (keep updated)
+│   └── requirements.txt         # ⚠️ Vulnerable Python deps
 │
 ├── config/                      # Policy configuration
 ├── test_files/                  # Demo test files
 └── scripts/                     # Development scripts
 ```
-
-## Security Notes
-
-- All secrets (API keys, JWT secrets) must be stored in environment variables and never hardcoded or committed to version control.
-- JWT_SECRET must be a cryptographically strong random value (minimum 32 bytes).
-- File uploads should be validated for type, size, and content before processing.
-- All inter-agent calls require JWT-based authentication after remediation.
-- Dependencies should be kept up to date and audited regularly with `npm audit` and `pip-audit`.
-- Error messages returned to clients must not expose internal stack traces or sensitive system details.
-- Input from users and uploaded files must be treated as untrusted and sanitized before use.
 
 ## Demo Scenarios
 
@@ -206,8 +197,8 @@ python scripts/create_test_files.py
               ┌─────────────┼─────────────┐
               ▼             ▼             ▼
          ┌────────┐   ┌──────────┐   ┌─────────┐
-         │OpenRouter│  │  Policy  │   │  File   │
-         │ (LLM)  │   │ Modules  │   │ Parsers │
+         │Approved│   │  Policy  │   │  File   │
+         │  LLM   │   │ Modules  │   │ Parsers │
          └────────┘   └──────────┘   └─────────┘
 ```
 
@@ -215,8 +206,8 @@ python scripts/create_test_files.py
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENROUTER_API_KEY` | OpenRouter API key for LLM | Yes |
-| `JWT_SECRET` | Cryptographically strong secret for JWT signing (min 32 bytes, never hardcode) | Yes (after remediation) |
+| `APPROVED_LLM_API_KEY` | API key for approved LLM provider (replace OpenRouter with an approved LLM from the allow list) | Yes |
+| `JWT_SECRET` | Secret for JWT signing (after remediation) | No |
 | `BACKEND_URL` | Backend URL for frontend | No (default: localhost:5500) |
 
 ## License
