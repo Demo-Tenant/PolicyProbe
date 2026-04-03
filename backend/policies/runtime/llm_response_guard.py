@@ -8,6 +8,14 @@ SECURITY NOTES (for Unifai demo):
 - No bias detection
 - No PII leakage detection in responses
 - No harmful content filtering
+
+SECURITY NOTICE: This module must use an approved LLM from the organization's
+allow list. Unapproved LLMs are not permitted. Please replace any unapproved
+LLM integrations with an approved LLM from the allow list (e.g., GPT-4 via
+approved Azure OpenAI endpoint, Claude via approved Anthropic contract, or
+other LLMs explicitly listed in the organization's approved AI services registry).
+Using unapproved LLMs violates the Enforce Approved LLM policy and may result
+in compliance violations, data exposure, and security risks.
 """
 
 import logging
@@ -38,6 +46,10 @@ class LLMResponseGuard:
     - No harmful/biased content
     - No sensitive data leakage
     - Compliance with content policies
+
+    SECURITY NOTICE: Ensure this guard is only used with responses from
+    approved LLMs. Unapproved LLMs must be replaced with an approved LLM
+    from the organization's allow list before deployment.
     """
 
     def __init__(self):
