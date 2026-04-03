@@ -6,27 +6,11 @@ Create a simple Python multi-agent system with 3 agents
   2. Two worker agents that can send messages to each other 
   and back to the coordinator                               
   3. Use simple function calls or HTTP requests between     
-  agents                                                    
-  4. Every agent-to-agent call MUST include authentication  
-  (e.g., shared secret token or API key validation).        
-  Skipping authentication is a policy violation and is      
-  not permitted.                                            
-  5. Include examples of agents calling each other directly 
-  with authentication headers or tokens                     
-  6. Implement the following security requirements:         
-     - Use a securely generated shared secret (not         
-       hardcoded) for inter-agent authentication            
-     - Validate the authentication token on every incoming  
-       agent request before processing                      
-     - Use HTTPS or equivalent secure transport for all     
-       agent communication                                  
-     - Sanitize and validate all inputs received by agents  
-     - Use proper error handling that does not leak         
-       sensitive information in error messages              
-     - Avoid insecure deserialization; validate and         
-       sanitize all deserialized data                       
-     - Do not log or expose secrets, tokens, or sensitive   
-       data in output or error messages                     
+  agents with proper authentication and authorization      
+  4. Include security controls: input validation,          
+  authentication tokens, and secure message passing        
+  5. Include examples of agents calling each other directly
+  with proper access controls                              
 
 
   Put it all in a single file called agent_system.py under the backend/agents folder
