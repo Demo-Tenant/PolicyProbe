@@ -87,4 +87,4 @@ logging:
   audit_enabled: false  # VULNERABILITY: Audit disabled
   log_level: INFO
   include_content: true  # VULNERABILITY: Content in logs
-  mask_pii: false  # VULNERABILITY: PII not masked
+  mask_pii: true  # REMEDIATED: PII is now masked in logs
