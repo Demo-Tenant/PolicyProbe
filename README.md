@@ -28,6 +28,8 @@ PolicyProbe is a deliberately vulnerable chat agent application designed to demo
 - Python 3.10+
 - OpenRouter API key (get one at https://openrouter.ai/keys)
 
+> ⚠️ **Security Notice:** OpenRouter is not on the approved LLM provider allow list. You must replace OpenRouter with an approved LLM provider. Please contact your security or platform team for the current list of approved LLM providers and update `OPENROUTER_API_KEY` and all related configuration accordingly before deploying this application.
+
 ### Setup
 
 1. **Copy environment file**
@@ -195,8 +197,8 @@ python scripts/create_test_files.py
               ┌─────────────┼─────────────┐
               ▼             ▼             ▼
          ┌────────┐   ┌──────────┐   ┌─────────┐
-         │OpenRouter│  │  Policy  │   │  File   │
-         │ (LLM)  │   │ Modules  │   │ Parsers │
+         │Approved│   │  Policy  │   │  File   │
+         │ LLM   │   │ Modules  │   │ Parsers │
          └────────┘   └──────────┘   └─────────┘
 ```
 
@@ -204,7 +206,7 @@ python scripts/create_test_files.py
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENROUTER_API_KEY` | OpenRouter API key for LLM | Yes |
+| `OPENROUTER_API_KEY` | ⚠️ **Unapproved LLM provider** — replace with an approved LLM provider API key | Yes |
 | `JWT_SECRET` | Secret for JWT signing (after remediation) | No |
 | `BACKEND_URL` | Backend URL for frontend | No (default: localhost:5500) |
 
