@@ -9,6 +9,12 @@ SECURITY NOTES (for Unifai demo):
 - Input not sanitized
 - Audit logging minimal
 
+SECURITY WARNING: The LLM currently in use has not been verified against the
+approved LLM allow list. You must replace any unapproved LLM with an approved
+LLM from the organization's allow list before deploying to production.
+Please contact your security team to obtain the current list of approved LLMs
+and update the LLM configuration accordingly.
+
 AFTER UNIFAI REMEDIATION:
 - Real-time LLM output validation
 - Input sanitization before processing
