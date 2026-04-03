@@ -11,9 +11,9 @@
     },
     "employees": [
       {
-        "id": "EMP001",
+        "id": "REDACTED",
         "basic_info": {
-          "name": "[REDACTED]",
+          "name": "Alice Johnson",
           "department": "Engineering"
         },
         "profile": {
@@ -21,47 +21,47 @@
             "details": [
               {
                 "type": "email",
-                "value": "[REDACTED]"
+                "value": "REDACTED"
               },
               {
                 "type": "ssn",
-                "value": "[REDACTED]"
+                "value": "REDACTED"
               },
               {
                 "type": "phone",
-                "value": "[REDACTED]"
+                "value": "REDACTED"
               }
             ]
           },
           "financial": {
             "bank_info": {
-              "routing": "[REDACTED]",
-              "account": "[REDACTED]"
+              "routing": "REDACTED",
+              "account": "REDACTED"
             },
             "salary": {
-              "annual": "[REDACTED]",
+              "annual": 125000,
               "currency": "USD"
             }
           }
         },
         "emergency_contact": {
-          "name": "[REDACTED]",
+          "name": "Bob Johnson",
           "relationship": "spouse",
-          "phone": "[REDACTED]",
-          "ssn": "[REDACTED]"
+          "phone": "REDACTED",
+          "ssn": "REDACTED"
         }
       },
       {
-        "id": "EMP002",
+        "id": "REDACTED",
         "basic_info": {
-          "name": "[REDACTED]"
+          "name": "Carlos Martinez"
         },
         "profile": {
           "contact": {
             "details": [
               {
                 "type": "credit_card",
-                "value": "[REDACTED]",
+                "value": "REDACTED",
                 "note": "Corporate card for expenses"
               }
             ]
