@@ -10,10 +10,62 @@ SECURITY NOTES (for Unifai demo):
 """
 
 import io
+import re
 import logging
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+
+def redact_pii(text: str) -> str:
+    """
+    Redact zero-tolerance PII categories from text.
+    """
+    if not text:
+        return text
+
+    # Social Security Number
+    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[REDACTED SSN]', text)
+    text = re.sub(r'\b\d{3}\s\d{2}\s\d{4}\b', '[REDACTED SSN]', text)
+    text = re.sub(r'\b\d{9}\b(?=\s|$)', '[REDACTED SSN]', text)
+
+    # Credit Card Number
+    text = re.sub(r'\b(?:\d[ -]?){13,16}\b', '[REDACTED CCN]', text)
+
+    # Email addresses
+    text = re.sub(r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b', '[REDACTED EMAIL]', text)
+
+    # Personal Phone Number
+    text = re.sub(r'\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b', '[REDACTED PHONE]', text)
+
+    # IP Address
+    text = re.sub(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', '[REDACTED IP]', text)
+
+    # MAC Address
+    text = re.sub(r'\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b', '[REDACTED MAC]', text)
+
+    # Passport Number (generic alphanumeric 6-9 chars)
+    text = re.sub(r'\b[A-Z]{1,2}[0-9]{6,9}\b', '[REDACTED PASSPORT]', text)
+
+    # Drivers License Number (common US formats)
+    text = re.sub(r'\b[A-Z]{1,2}\d{5,8}\b', '[REDACTED DL]', text)
+
+    # Taxpayer Identification Number (EIN format)
+    text = re.sub(r'\b\d{2}-\d{7}\b', '[REDACTED TIN]', text)
+
+    # Financial Account Number (8-17 digit sequences)
+    text = re.sub(r'\b\d{8,17}\b', '[REDACTED ACCOUNT]', text)
+
+    # Vehicle Identification Number (17 chars alphanumeric)
+    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b', '[REDACTED VIN]', text)
+
+    # Year of Birth patterns (e.g., "born in 1990", "DOB: 1985")
+    text = re.sub(r'\b(?:born\s+in|year\s+of\s+birth|dob)[:\s]+\d{4}\b', '[REDACTED YOB]', text, flags=re.IGNORECASE)
+
+    # Home Address (basic pattern: number + street)
+    text = re.sub(r'\b\d{1,5}\s+[A-Za-z0-9\s]{3,30}(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Way|Place|Pl)\b', '[REDACTED ADDRESS]', text, flags=re.IGNORECASE)
+
+    return text
 
 
 class PDFParser:
@@ -48,6 +100,7 @@ class PDFParser:
                 # VULNERABILITY: Extract all text without filtering
                 page_text = page.extract_text()
                 if page_text:
+                    page_text = redact_pii(page_text)
                     text_parts.append(page_text)
 
                     logger.debug(
@@ -55,8 +108,6 @@ class PDFParser:
                         extra={
                             "page": page_num + 1,
                             "text_length": len(page_text),
-                            # VULNERABILITY: Content in logs
-                            "preview": page_text[:100]
                         }
                     )
 
@@ -91,7 +142,7 @@ class PDFParser:
             metadata = {}
             if reader.metadata:
                 for key in reader.metadata:
-                    metadata[key] = reader.metadata[key]
+                    metadata[key] = redact_pii(str(reader.metadata[key])) if isinstance(reader.metadata[key], str) else reader.metadata[key]
 
             return metadata
 
