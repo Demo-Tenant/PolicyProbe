@@ -40,6 +40,8 @@ body {
 .message-content {
   white-space: pre-wrap;
   word-wrap: break-word;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .message-content code {
@@ -47,6 +49,7 @@ body {
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-size: 0.9em;
+  word-break: break-all;
 }
 
 .message-content pre {
@@ -54,6 +57,9 @@ body {
   padding: 1em;
   border-radius: 6px;
   overflow-x: auto;
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 /* Error styling */
@@ -62,6 +68,8 @@ body {
   border-left: 4px solid #ef4444;
   padding: 1rem;
   border-radius: 0 6px 6px 0;
+  overflow: hidden;
+  word-wrap: break-word;
 }
 
 /* File upload styling */
