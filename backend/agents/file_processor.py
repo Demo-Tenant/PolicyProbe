@@ -5,6 +5,7 @@ File Processor Agent
 
 import base64
 import logging
+import re
 from typing import Optional
 
 from file_parsers.pdf_parser import PDFParser
@@ -12,6 +13,64 @@ from file_parsers.image_parser import ImageParser
 from file_parsers.html_parser import HTMLParser
 
 logger = logging.getLogger(__name__)
+
+
+def _redact_pii(text: str) -> str:
+    """Redact zero-tolerance PII categories from text."""
+    if not text:
+        return text
+
+    # Social Security Number
+    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[REDACTED-SSN]', text)
+    text = re.sub(r'\b\d{9}\b', '[REDACTED-SSN]', text)
+
+    # Credit Card Number
+    text = re.sub(r'\b(?:\d[ -]?){13,16}\b', '[REDACTED-CCN]', text)
+
+    # Personal Phone Number
+    text = re.sub(r'\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b', '[REDACTED-PHONE]', text)
+
+    # Email
+    text = re.sub(r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b', '[REDACTED-EMAIL]', text)
+
+    # IP Address
+    text = re.sub(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', '[REDACTED-IP]', text)
+
+    # MAC Address
+    text = re.sub(r'\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b', '[REDACTED-MAC]', text)
+
+    # Passport Number (generic alphanumeric 6-9 chars)
+    text = re.sub(r'\b[A-Z]{1,2}\d{6,9}\b', '[REDACTED-PASSPORT]', text)
+
+    # Drivers License Number (common US formats)
+    text = re.sub(r'\b[A-Z]{1,2}\d{5,8}\b', '[REDACTED-DL]', text)
+
+    # Taxpayer Identification Number (EIN format)
+    text = re.sub(r'\b\d{2}-\d{7}\b', '[REDACTED-TIN]', text)
+
+    # Financial Account Number (8-17 digit sequences)
+    text = re.sub(r'\b\d{8,17}\b', '[REDACTED-ACCOUNT]', text)
+
+    # Vehicle Identification Number (17 chars alphanumeric)
+    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b', '[REDACTED-VIN]', text)
+
+    # Year of Birth patterns (e.g., "born in 1985", "DOB: 1990")
+    text = re.sub(r'\b(?:born\s+in|year\s+of\s+birth|dob|date\s+of\s+birth)\s*[:\-]?\s*\d{4}\b',
+                  '[REDACTED-YOB]', text, flags=re.IGNORECASE)
+
+    # Home Address (basic pattern: number + street)
+    text = re.sub(r'\b\d+\s+[A-Za-z]+(?:\s+[A-Za-z]+)*\s+(?:St|Street|Ave|Avenue|Blvd|Boulevard|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place)\b',
+                  '[REDACTED-ADDRESS]', text, flags=re.IGNORECASE)
+
+    # Employee ID patterns
+    text = re.sub(r'\b(?:EMP|emp|employee\s*id|employee\s*#)\s*[:\-]?\s*[A-Z0-9]{4,10}\b',
+                  '[REDACTED-EMPID]', text, flags=re.IGNORECASE)
+
+    # School ID patterns
+    text = re.sub(r'\b(?:student\s*id|school\s*id|student\s*#)\s*[:\-]?\s*[A-Z0-9]{4,10}\b',
+                  '[REDACTED-SCHOOLID]', text, flags=re.IGNORECASE)
+
+    return text
 
 
 class FileProcessorAgent:
@@ -60,13 +119,6 @@ class FileProcessorAgent:
 
         Returns:
             Extracted text content from the file
-
-        VULNERABILITY: No security scanning performed on file content.
-        Files are processed and content extracted without checking for:
-        - PII (SSN, credit cards, phone numbers)
-        - Hidden/malicious prompts
-        - Malware signatures
-        - Sensitive data patterns
         """
         logger.info(
             "Processing file",
@@ -74,8 +126,6 @@ class FileProcessorAgent:
                 "file_name": filename,
                 "file_type": content_type,
                 "content_length": len(content) if content else 0,
-                # VULNERABILITY: Content preview in logs could contain sensitive data
-                "content_preview": content[:100] if content else None
             }
         )
 
@@ -86,7 +136,6 @@ class FileProcessorAgent:
         file_type = self._get_file_type(content_type, filename)
 
         # Process based on file type
-        # VULNERABILITY: No content scanning before processing
         try:
             if file_type == "pdf":
                 extracted = await self._process_pdf(content)
@@ -101,19 +150,14 @@ class FileProcessorAgent:
             else:
                 extracted = f"Unsupported file type: {content_type}"
 
-            # VULNERABILITY: No post-processing security scan
-            # Extracted content could contain:
-            # - Hidden prompt injections (invisible text, encoded data)
-            # - PII that should be masked
-            # - Malicious instructions
+            # Redact PII from extracted content
+            extracted = _redact_pii(extracted)
 
             logger.info(
                 "File processing complete",
                 extra={
                     "file_name": filename,
                     "extracted_length": len(extracted),
-                    # VULNERABILITY: Full extracted content in logs
-                    "extracted_preview": extracted[:200]
                 }
             )
 
@@ -125,8 +169,6 @@ class FileProcessorAgent:
                 extra={
                     "file_name": filename,
                     "error": str(e),
-                    # VULNERABILITY: Full content in error logs
-                    "file_content": content[:500] if content else None
                 }
             )
             return f"Error processing {filename}: {str(e)}"
@@ -157,18 +199,11 @@ class FileProcessorAgent:
     async def _process_pdf(self, content: str) -> str:
         """
         Process PDF file content.
-
-        VULNERABILITY: PDF processing extracts all text including
-        hidden/white text that could contain prompt injections.
         """
         # Content is base64 encoded for PDFs
         try:
             pdf_bytes = base64.b64decode(content)
             extracted_text = await self.pdf_parser.extract_text(pdf_bytes)
-
-            # VULNERABILITY: No hidden text detection
-            # Invisible text (white on white, size 0, off-page) is extracted
-            # and passed to LLM without filtering
 
             return extracted_text
         except Exception as e:
@@ -178,18 +213,9 @@ class FileProcessorAgent:
     async def _process_html(self, content: str) -> str:
         """
         Process HTML content.
-
-        VULNERABILITY: HTML processing may not detect all hidden content:
-        - CSS-hidden elements (display:none, visibility:hidden)
-        - White text on white background
-        - Off-screen positioned elements
-        - Base64 encoded content in data attributes
         """
         try:
             extracted_text = await self.html_parser.extract_text(content)
-
-            # VULNERABILITY: get_text() extracts content from hidden elements
-            # Malicious prompts in hidden divs will be extracted
 
             return extracted_text
         except Exception as e:
@@ -199,18 +225,12 @@ class FileProcessorAgent:
     async def _process_image(self, content: str) -> str:
         """
         Process image file.
-
-        VULNERABILITY: Image processing extracts EXIF metadata which
-        could contain malicious prompts in comment/description fields.
         """
         try:
             image_bytes = base64.b64decode(content)
 
             # Extract both visual text (OCR) and metadata
             extracted = await self.image_parser.extract_all(image_bytes)
-
-            # VULNERABILITY: EXIF data extracted and included without scanning
-            # Comment, UserComment, ImageDescription fields could contain injections
 
             return extracted
         except Exception as e:
@@ -220,19 +240,12 @@ class FileProcessorAgent:
     async def _process_json(self, content: str) -> str:
         """
         Process JSON content.
-
-        VULNERABILITY: JSON content processed without PII scanning.
-        Nested objects containing sensitive data are passed through.
         """
         import json
 
         try:
             # Parse to validate JSON
             data = json.loads(content)
-
-            # VULNERABILITY: No PII detection in nested objects
-            # Data like user.profile.contact.ssn passes through
-            # No recursive scanning for sensitive patterns
 
             # Convert back to formatted string for analysis
             formatted = json.dumps(data, indent=2)
@@ -244,9 +257,6 @@ class FileProcessorAgent:
     async def validate_file(self, content: str, filename: str) -> dict:
         """
         Validate file before processing.
-
-        VULNERABILITY: Validation only checks format, not content.
-        No security scanning performed.
         """
         # Basic validation only
         validation_result = {
@@ -256,15 +266,14 @@ class FileProcessorAgent:
             "warnings": []
         }
 
-        # Size check (but no PII/threat check)
+        # Size check
         if len(content) > 10 * 1024 * 1024:  # 10MB
             validation_result["warnings"].append("Large file - processing may be slow")
 
-        # VULNERABILITY: No content-based security validation
-        # Should check for:
-        # - PII patterns
-        # - Known malware signatures
-        # - Prompt injection patterns
-        # - Hidden content indicators
+        # Check for PII in content
+        if content:
+            redacted = _redact_pii(content)
+            if redacted != content:
+                validation_result["warnings"].append("File contains PII which will be redacted during processing")
 
         return validation_result
