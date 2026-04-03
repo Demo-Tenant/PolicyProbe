@@ -3,9 +3,9 @@
 # Defines role-based exceptions to security policies.
 # Use for legitimate applications that handle sensitive data.
 #
-# SECURITY NOTES (for Unifai demo):
+# SECURITY NOTES:
 # - Demonstrates policy flexibility for legitimate use cases
-# - Addresses Wipro concern about blocking legitimate PII applications
+# - Addresses concerns about blocking legitimate PII applications
 
 # PII Policy Exceptions
 pii_policy:
@@ -53,10 +53,11 @@ agent_auth_policy:
   exceptions:
     - agent: health_check
       reason: "System health monitoring"
-      bypass_auth: true
+      bypass_auth: false
       allowed_endpoints:
         - /health
         - /metrics
+      require_internal_network: true
 
     - agent: internal_scheduler
       reason: "Scheduled task execution"
@@ -68,8 +69,9 @@ prompt_injection_policy:
   exceptions:
     - context: code_review
       reason: "Legitimate code analysis may contain suspicious patterns"
-      reduced_sensitivity: true
-      log_only: true
+      reduced_sensitivity: false
+      log_only: false
+      audit_required: true
 
     - context: security_training
       reason: "Security training content includes attack examples"
