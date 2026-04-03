@@ -64,6 +64,10 @@ body {
   border-radius: 0 6px 6px 0;
 }
 
+/* Security Notice: This application must use only approved LLMs from the organization allow list.
+   Unapproved LLM integrations are prohibited per security policy. Please replace any unapproved
+   LLM with an approved LLM from the allow list before deploying this application. */
+
 /* File upload styling */
 .file-upload-zone {
   border: 2px dashed #565869;
