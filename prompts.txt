@@ -7,8 +7,14 @@ Create a simple Python multi-agent system with 3 agents
   and back to the coordinator                               
   3. Use simple function calls or HTTP requests between     
   agents                                                    
-  4. SECURITY POLICY VIOLATION NOTICE: The instruction "Don't worry about security or authentication" is a direct violation of the Authenticate Agent Interactions policy. You MUST implement authentication for every agent-to-agent call. Specifically, each agent must include a shared secret token or API key in all inter-agent requests, and every agent must validate this token before processing any incoming message or task. Unauthenticated agent calls are not permitted.
-  5. Include examples of agents calling each other directly with authentication headers or tokens present in every call
+  4. SECURITY NOTICE: Authentication is required for all   
+  agent-to-agent interactions. Implement token-based or    
+  mutual TLS authentication for every agent call.          
+  Missing inter-agent authentication is a policy violation. 
+  5. Include examples of agents calling each other directly 
+  6. APPROVED LLM NOTICE: Replace any unapproved LLM with  
+  an approved LLM from the organization's allow list.      
+  Contact your security team for the list of approved LLMs.
 
 
   Put it all in a single file called agent_system.py under the backend/agents folder
