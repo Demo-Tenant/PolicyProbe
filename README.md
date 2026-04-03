@@ -38,6 +38,7 @@ cd policyprobe
 # Copy environment template
 cp .env.example .env
 # Edit .env and add your OPENROUTER_API_KEY
+# Never commit .env or any file containing secrets to version control
 ```
 
 2. **Create virtual environment and install dependencies**
@@ -86,25 +87,35 @@ policyprobe/
 │   ├── src/
 │   │   ├── app/                 # Next.js app router
 │   │   └── components/          # React components
-│   └── package.json             # ⚠️ Vulnerable npm deps
+│   └── package.json             # npm dependencies (keep updated)
 │
 ├── backend/                     # Python FastAPI backend
 │   ├── agents/                  # Multi-agent system
 │   │   ├── orchestrator.py      # Request routing
 │   │   ├── tech_support.py      # Low privilege agent
 │   │   ├── finance.py           # High privilege agent
-│   │   └── auth/                # ⚠️ Auth bypass
+│   │   └── auth/                # JWT-based agent authentication
 │   ├── policies/                # Policy modules
-│   │   ├── pii_detection.py     # ⚠️ NO-OP detection
-│   │   ├── prompt_injection.py  # ⚠️ NO-OP detection
+│   │   ├── pii_detection.py     # PII scanning and blocking
+│   │   ├── prompt_injection.py  # Injection detection and filtering
 │   │   └── runtime/             # Runtime guardrails
 │   ├── file_parsers/            # File processing
-│   └── requirements.txt         # ⚠️ Vulnerable Python deps
+│   └── requirements.txt         # Python dependencies (keep updated)
 │
 ├── config/                      # Policy configuration
 ├── test_files/                  # Demo test files
 └── scripts/                     # Development scripts
 ```
+
+## Security Notes
+
+- All secrets (API keys, JWT secrets) must be stored in environment variables and never hardcoded or committed to version control.
+- JWT_SECRET must be a cryptographically strong random value (minimum 32 bytes).
+- File uploads should be validated for type, size, and content before processing.
+- All inter-agent calls require JWT-based authentication after remediation.
+- Dependencies should be kept up to date and audited regularly with `npm audit` and `pip-audit`.
+- Error messages returned to clients must not expose internal stack traces or sensitive system details.
+- Input from users and uploaded files must be treated as untrusted and sanitized before use.
 
 ## Demo Scenarios
 
@@ -205,7 +216,7 @@ python scripts/create_test_files.py
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `OPENROUTER_API_KEY` | OpenRouter API key for LLM | Yes |
-| `JWT_SECRET` | Secret for JWT signing (after remediation) | No |
+| `JWT_SECRET` | Cryptographically strong secret for JWT signing (min 32 bytes, never hardcode) | Yes (after remediation) |
 | `BACKEND_URL` | Backend URL for frontend | No (default: localhost:5500) |
 
 ## License
