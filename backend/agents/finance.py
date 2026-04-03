@@ -47,7 +47,7 @@ class FinanceAgent:
             "quarterly_revenue": {
                 "Q1_2024": 2500000,
                 "Q2_2024": 2750000,
-                "Q3_2024": 310000,
+                "Q3_2024": 3100000,
                 "Q4_2024": 3400000
             },
             "operating_expenses": {
